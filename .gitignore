@@ -1,0 +1,80 @@
+# ============================================================
+# Linux Security Fleet Audit Toolkit
+# Git ignore rules
+# ============================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.secret
+*.secrets
+
+# Private keys / certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.csr
+
+# Ansible sensitive files
+*.retry
+.vault_pass
+vault-password*
+ansible.cfg.local
+
+# Production inventories
+inventories/production.ini
+inventories/prod.ini
+inventories/*-production.ini
+
+# Real audit output
+reports/*
+!reports/.gitkeep
+
+# Raw evidence collected from hosts
+evidence/
+raw-data/
+raw_data/
+artifacts/
+
+# Production baselines
+baselines/production/
+baselines/prod/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.swp
+*.bak
+
+# Local editor configuration
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Local test/output files
+output/
+outputs/
