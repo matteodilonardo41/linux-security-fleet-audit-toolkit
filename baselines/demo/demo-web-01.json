@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "host": "demo-web-01",
+  "expected": {
+    "ssh": {
+      "permitrootlogin": "no",
+      "passwordauthentication": "no",
+      "pubkeyauthentication": "yes"
+    }
+  }
+}

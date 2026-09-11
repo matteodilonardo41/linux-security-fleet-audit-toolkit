@@ -2,6 +2,7 @@
 
 set -euo pipefail
 
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 ANALYZER="${ROOT_DIR}/analyzer/analyzer.py"
@@ -11,11 +12,12 @@ REPORT_DIR="${ROOT_DIR}/reports"
 RAW_DATA_DIR="${ROOT_DIR}/raw_data"
 
 DEMO_EVIDENCE_DIR="${ROOT_DIR}/examples/demo-evidence"
-DEMO_INVENTORY="${ROOT_DIR}/inventories/demo.ini"
+DEMO_BASELINE_DIR="${ROOT_DIR}/baselines/demo"
+
 PLAYBOOK="${ROOT_DIR}/playbooks/audit.yml"
 
 MODE="${1:-demo}"
-INVENTORY="${2:-${DEMO_INVENTORY}}"
+INVENTORY="${2:-}"
 
 ANALYSIS_JSON="${REPORT_DIR}/fleet-analysis.json"
 REPORT_HTML="${REPORT_DIR}/fleet-report.html"
@@ -33,7 +35,7 @@ check_file() {
     local path="$1"
 
     if [[ ! -f "$path" ]]; then
-        echo "Required file not found: $path" >&2
+        echo "[ERROR] Required file not found: $path" >&2
         exit 1
     fi
 }
@@ -43,7 +45,7 @@ check_directory() {
     local path="$1"
 
     if [[ ! -d "$path" ]]; then
-        echo "Required directory not found: $path" >&2
+        echo "[ERROR] Required directory not found: $path" >&2
         exit 1
     fi
 }
@@ -51,10 +53,18 @@ check_directory() {
 
 run_analysis() {
     local input_dir="$1"
+    local baseline_dir="${2:-}"
 
-    python3 "$ANALYZER" \
-        --input-dir "$input_dir" \
-        --output "$ANALYSIS_JSON"
+    if [[ -n "$baseline_dir" ]]; then
+        python3 "$ANALYZER" \
+            --input-dir "$input_dir" \
+            --baseline-dir "$baseline_dir" \
+            --output "$ANALYSIS_JSON"
+    else
+        python3 "$ANALYZER" \
+            --input-dir "$input_dir" \
+            --output "$ANALYSIS_JSON"
+    fi
 
     python3 "$REPORT_GENERATOR" \
         --input "$ANALYSIS_JSON" \
@@ -64,23 +74,35 @@ run_analysis() {
 
 run_demo() {
     echo "[MODE] Demo"
-    echo "[INFO] Using sanitized evidence from: $DEMO_EVIDENCE_DIR"
+    echo "[INFO] Using sanitized demo evidence"
+    echo "[INFO] Evidence: $DEMO_EVIDENCE_DIR"
+    echo "[INFO] Baseline: $DEMO_BASELINE_DIR"
 
     check_directory "$DEMO_EVIDENCE_DIR"
+    check_directory "$DEMO_BASELINE_DIR"
 
-    run_analysis "$DEMO_EVIDENCE_DIR"
+    run_analysis \
+        "$DEMO_EVIDENCE_DIR" \
+        "$DEMO_BASELINE_DIR"
 }
 
 
 run_collection() {
     echo "[MODE] Live collection"
+
+    if [[ -z "$INVENTORY" ]]; then
+        echo "[ERROR] Collection mode requires an inventory file." >&2
+        echo "Usage: ./run-audit.sh collect <inventory>" >&2
+        exit 2
+    fi
+
     echo "[INFO] Inventory: $INVENTORY"
 
     check_file "$INVENTORY"
     check_file "$PLAYBOOK"
 
     command -v ansible-playbook >/dev/null 2>&1 || {
-        echo "ansible-playbook is required for collection mode." >&2
+        echo "[ERROR] ansible-playbook is required for collection mode." >&2
         exit 1
     }
 
@@ -108,19 +130,23 @@ main() {
         demo)
             run_demo
             ;;
+
         collect)
             run_collection
             ;;
+
         *)
+            echo "[ERROR] Unknown mode: $MODE" >&2
+            echo >&2
             echo "Usage:" >&2
             echo "  ./run-audit.sh demo" >&2
-            echo "  ./run-audit.sh collect [inventory]" >&2
+            echo "  ./run-audit.sh collect <inventory>" >&2
             exit 2
             ;;
     esac
 
     echo
-    echo "[OK] Audit completed"
+    echo "[OK] Audit completed successfully"
     echo "[OK] JSON report: $ANALYSIS_JSON"
     echo "[OK] HTML report: $REPORT_HTML"
 }

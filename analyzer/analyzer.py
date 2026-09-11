@@ -43,7 +43,10 @@ def parse_sshd_config(lines: list[str]) -> dict[str, str]:
     return config
 
 
-def parse_pipe_record(line: str, expected_fields: int) -> list[str] | None:
+def parse_pipe_record(
+    line: str,
+    expected_fields: int,
+) -> list[str] | None:
     fields = line.split("|")
 
     if len(fields) != expected_fields:
@@ -52,7 +55,9 @@ def parse_pipe_record(line: str, expected_fields: int) -> list[str] | None:
     return fields
 
 
-def analyze_uid0(data: dict[str, Any]) -> list[dict[str, Any]]:
+def analyze_uid0(
+    data: dict[str, Any],
+) -> list[dict[str, Any]]:
     findings = []
     accounts = data.get("uid0_accounts", [])
 
@@ -71,16 +76,24 @@ def analyze_uid0(data: dict[str, Any]) -> list[dict[str, Any]]:
                 "LINUX-UID0-001",
                 "Unexpected privileged account detected",
                 unexpected,
-                "Review every UID 0 account and remove unnecessary privileged identities.",
+                (
+                    "Review every UID 0 account and remove "
+                    "unnecessary privileged identities."
+                ),
             )
         )
 
     return findings
 
 
-def analyze_ssh(data: dict[str, Any]) -> list[dict[str, Any]]:
+def analyze_ssh(
+    data: dict[str, Any],
+) -> list[dict[str, Any]]:
     findings = []
-    config = parse_sshd_config(data.get("sshd_config", []))
+
+    config = parse_sshd_config(
+        data.get("sshd_config", [])
+    )
 
     permit_root = config.get("permitrootlogin")
 
@@ -90,12 +103,19 @@ def analyze_ssh(data: dict[str, Any]) -> list[dict[str, Any]]:
                 "HIGH",
                 "SSH-ROOT-001",
                 "Direct SSH root login is enabled",
-                [f"permitrootlogin {permit_root}"],
-                "Disable direct root login and use named administrative accounts with privilege escalation.",
+                [
+                    f"permitrootlogin {permit_root}"
+                ],
+                (
+                    "Disable direct root login and use named "
+                    "administrative accounts with privilege escalation."
+                ),
             )
         )
 
-    password_auth = config.get("passwordauthentication")
+    password_auth = config.get(
+        "passwordauthentication"
+    )
 
     if password_auth == "yes":
         findings.append(
@@ -103,12 +123,19 @@ def analyze_ssh(data: dict[str, Any]) -> list[dict[str, Any]]:
                 "WARNING",
                 "SSH-AUTH-001",
                 "SSH password authentication is enabled",
-                [f"passwordauthentication {password_auth}"],
-                "Consider key-based authentication where operationally appropriate.",
+                [
+                    f"passwordauthentication {password_auth}"
+                ],
+                (
+                    "Consider key-based authentication where "
+                    "operationally appropriate."
+                ),
             )
         )
 
-    pubkey_auth = config.get("pubkeyauthentication")
+    pubkey_auth = config.get(
+        "pubkeyauthentication"
+    )
 
     if pubkey_auth == "no":
         findings.append(
@@ -116,24 +143,44 @@ def analyze_ssh(data: dict[str, Any]) -> list[dict[str, Any]]:
                 "WARNING",
                 "SSH-KEY-001",
                 "SSH public key authentication is disabled",
-                [f"pubkeyauthentication {pubkey_auth}"],
-                "Review the authentication policy and enable public key authentication if required.",
+                [
+                    f"pubkeyauthentication {pubkey_auth}"
+                ],
+                (
+                    "Review the authentication policy and enable "
+                    "public key authentication if required."
+                ),
             )
         )
 
     return findings
 
 
-def analyze_authorized_keys(data: dict[str, Any]) -> list[dict[str, Any]]:
+def analyze_authorized_keys(
+    data: dict[str, Any],
+) -> list[dict[str, Any]]:
     findings = []
 
-    for entry in data.get("authorized_keys", []):
-        record = parse_pipe_record(entry, 6)
+    for entry in data.get(
+        "authorized_keys",
+        [],
+    ):
+        record = parse_pipe_record(
+            entry,
+            6,
+        )
 
         if not record:
             continue
 
-        path, owner, group, mode, size, modified = record
+        (
+            path,
+            owner,
+            group,
+            mode,
+            size,
+            modified,
+        ) = record
 
         try:
             permissions = int(mode, 8)
@@ -145,7 +192,10 @@ def analyze_authorized_keys(data: dict[str, Any]) -> list[dict[str, Any]]:
                 make_finding(
                     "WARNING",
                     "SSH-KEYPERM-001",
-                    "authorized_keys file is writable by group or others",
+                    (
+                        "authorized_keys file is writable "
+                        "by group or others"
+                    ),
                     [
                         f"path={path}",
                         f"owner={owner}:{group}",
@@ -153,20 +203,28 @@ def analyze_authorized_keys(data: dict[str, Any]) -> list[dict[str, Any]]:
                         f"size={size}",
                         f"modified={modified}",
                     ],
-                    "Remove group or world write permissions from the authorized_keys file.",
+                    (
+                        "Remove group or world write permissions "
+                        "from the authorized_keys file."
+                    ),
                 )
             )
 
     return findings
 
 
-def analyze_web_role(data: dict[str, Any]) -> list[dict[str, Any]]:
+def analyze_web_role(
+    data: dict[str, Any],
+) -> list[dict[str, Any]]:
     findings = []
 
     if data.get("role") != "web":
         return findings
 
-    wordpress_roots = data.get("wordpress_roots", [])
+    wordpress_roots = data.get(
+        "wordpress_roots",
+        [],
+    )
 
     if wordpress_roots:
         findings.append(
@@ -175,69 +233,134 @@ def analyze_web_role(data: dict[str, Any]) -> list[dict[str, Any]]:
                 "WEB-WP-001",
                 "WordPress installation detected",
                 wordpress_roots,
-                "Apply the dedicated WordPress security checks to each detected installation.",
+                (
+                    "Apply the dedicated WordPress security "
+                    "checks to each detected installation."
+                ),
             )
         )
 
     return findings
 
 
-def parse_postfix_config(lines: list[str]) -> dict[str, str]:
+def parse_postfix_config(
+    lines: list[str],
+) -> dict[str, str]:
     config: dict[str, str] = {}
 
     for line in lines:
         if "=" not in line:
             continue
 
-        key, value = line.split("=", 1)
-        config[key.strip().lower()] = value.strip()
+        key, value = line.split(
+            "=",
+            1,
+        )
+
+        config[
+            key.strip().lower()
+        ] = value.strip()
 
     return config
 
 
-def analyze_mail_role(data: dict[str, Any]) -> list[dict[str, Any]]:
+def analyze_mail_role(
+    data: dict[str, Any],
+) -> list[dict[str, Any]]:
     findings = []
 
     if data.get("role") != "mail":
         return findings
 
-    postfix = parse_postfix_config(data.get("postfix_config", []))
+    postfix = parse_postfix_config(
+        data.get(
+            "postfix_config",
+            [],
+        )
+    )
 
-    tls_protocols = postfix.get("smtpd_tls_protocols", "")
-    mandatory_protocols = postfix.get("smtpd_tls_mandatory_protocols", "")
+    tls_protocols = postfix.get(
+        "smtpd_tls_protocols",
+        "",
+    )
 
-    combined_protocols = f"{tls_protocols} {mandatory_protocols}".lower()
+    mandatory_protocols = postfix.get(
+        "smtpd_tls_mandatory_protocols",
+        "",
+    )
 
-    legacy_exclusions = ("!sslv2", "!sslv3", "!tlsv1", "!tlsv1.1")
+    combined_protocols = (
+        f"{tls_protocols} "
+        f"{mandatory_protocols}"
+    ).lower()
+
+    legacy_exclusions = (
+        "!sslv2",
+        "!sslv3",
+        "!tlsv1",
+        "!tlsv1.1",
+    )
+
     missing_exclusions = [
         protocol
         for protocol in legacy_exclusions
         if protocol not in combined_protocols
     ]
 
-    if combined_protocols and missing_exclusions:
+    if (
+        combined_protocols
+        and missing_exclusions
+    ):
         findings.append(
             make_finding(
                 "WARNING",
                 "MAIL-TLS-001",
-                "Postfix TLS protocol policy requires review",
+                (
+                    "Postfix TLS protocol policy "
+                    "requires review"
+                ),
                 [
-                    f"smtpd_tls_protocols={tls_protocols}",
-                    f"smtpd_tls_mandatory_protocols={mandatory_protocols}",
-                    "missing_explicit_exclusions="
-                    + ",".join(missing_exclusions),
+                    (
+                        "smtpd_tls_protocols="
+                        f"{tls_protocols}"
+                    ),
+                    (
+                        "smtpd_tls_mandatory_protocols="
+                        f"{mandatory_protocols}"
+                    ),
+                    (
+                        "missing_explicit_exclusions="
+                        + ",".join(
+                            missing_exclusions
+                        )
+                    ),
                 ],
-                "Review the supported TLS protocol policy against the security requirements of the environment.",
+                (
+                    "Review the supported TLS protocol policy "
+                    "against the security requirements "
+                    "of the environment."
+                ),
             )
         )
 
-    for entry in data.get("clamav_socket", []):
-        record = parse_pipe_record(entry, 4)
+    for entry in data.get(
+        "clamav_socket",
+        [],
+    ):
+        record = parse_pipe_record(
+            entry,
+            4,
+        )
 
         if not record:
             continue
 
-        path, owner, group, mode = record
+        (
+            path,
+            owner,
+            group,
+            mode,
+        ) = record
 
         try:
             permissions = int(mode, 8)
@@ -249,58 +372,230 @@ def analyze_mail_role(data: dict[str, Any]) -> list[dict[str, Any]]:
                 make_finding(
                     "WARNING",
                     "MAIL-CLAMAV-001",
-                    "ClamAV socket has permissive write permissions",
+                    (
+                        "ClamAV socket has "
+                        "permissive write permissions"
+                    ),
                     [
                         f"path={path}",
                         f"owner={owner}:{group}",
                         f"mode={mode}",
                     ],
-                    "Restrict socket permissions according to the required service access model.",
+                    (
+                        "Restrict socket permissions "
+                        "according to the required "
+                        "service access model."
+                    ),
                 )
             )
 
     return findings
 
 
-def analyze_host(data: dict[str, Any]) -> dict[str, Any]:
-    findings: list[dict[str, Any]] = []
+def analyze_baseline_drift(
+    data: dict[str, Any],
+    baseline: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    findings = []
 
-    findings.extend(analyze_uid0(data))
-    findings.extend(analyze_ssh(data))
-    findings.extend(analyze_authorized_keys(data))
-    findings.extend(analyze_web_role(data))
-    findings.extend(analyze_mail_role(data))
+    if not baseline:
+        return findings
+
+    expected_ssh = (
+        baseline
+        .get("expected", {})
+        .get("ssh", {})
+    )
+
+    if not expected_ssh:
+        return findings
+
+    current_ssh = parse_sshd_config(
+        data.get(
+            "sshd_config",
+            [],
+        )
+    )
+
+    drift_evidence = []
+    drift_severities = []
+
+    severity_by_setting = {
+        "permitrootlogin": "HIGH",
+        "passwordauthentication": "WARNING",
+        "pubkeyauthentication": "WARNING",
+    }
+
+    for (
+        setting,
+        expected_value,
+    ) in expected_ssh.items():
+        normalized_setting = (
+            setting
+            .strip()
+            .lower()
+        )
+
+        normalized_expected = (
+            str(expected_value)
+            .strip()
+            .lower()
+        )
+
+        current_value = current_ssh.get(
+            normalized_setting
+        )
+
+        if (
+            current_value
+            != normalized_expected
+        ):
+            drift_evidence.extend(
+                [
+                    (
+                        "setting="
+                        f"{normalized_setting}"
+                    ),
+                    (
+                        "expected="
+                        f"{normalized_expected}"
+                    ),
+                    (
+                        "current="
+                        f"{current_value or 'not-found'}"
+                    ),
+                ]
+            )
+
+            drift_severities.append(
+                severity_by_setting.get(
+                    normalized_setting,
+                    "WARNING",
+                )
+            )
+
+    if drift_evidence:
+        severity = max(
+            drift_severities,
+            key=lambda value: (
+                SEVERITY_ORDER[value]
+            ),
+        )
+
+        findings.append(
+            make_finding(
+                severity,
+                "BASELINE-SSH-001",
+                (
+                    "SSH configuration differs "
+                    "from approved baseline"
+                ),
+                drift_evidence,
+                (
+                    "Review the configuration drift and either "
+                    "restore the approved baseline or update "
+                    "the baseline if the change was intentional."
+                ),
+            )
+        )
+
+    return findings
+
+
+def analyze_host(
+    data: dict[str, Any],
+    baseline: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    findings: list[
+        dict[str, Any]
+    ] = []
+
+    findings.extend(
+        analyze_uid0(data)
+    )
+
+    findings.extend(
+        analyze_ssh(data)
+    )
+
+    findings.extend(
+        analyze_authorized_keys(data)
+    )
+
+    findings.extend(
+        analyze_web_role(data)
+    )
+
+    findings.extend(
+        analyze_mail_role(data)
+    )
+
+    findings.extend(
+        analyze_baseline_drift(
+            data,
+            baseline,
+        )
+    )
 
     if findings:
         status = max(
-            (finding["severity"] for finding in findings),
-            key=lambda severity: SEVERITY_ORDER[severity],
+            (
+                finding["severity"]
+                for finding in findings
+            ),
+            key=lambda severity: (
+                SEVERITY_ORDER[
+                    severity
+                ]
+            ),
         )
     else:
         status = "OK"
+
         findings.append(
             make_finding(
                 "OK",
                 "AUDIT-OK-001",
-                "No findings detected by the enabled checks",
+                (
+                    "No findings detected "
+                    "by the enabled checks"
+                ),
             )
         )
 
     return {
-        "host": data.get("host", "unknown"),
-        "role": data.get("role", "generic"),
-        "collected_at": data.get("collected_at"),
-        "system": data.get("system", {}),
+        "host": data.get(
+            "host",
+            "unknown",
+        ),
+        "role": data.get(
+            "role",
+            "generic",
+        ),
+        "collected_at": data.get(
+            "collected_at"
+        ),
+        "system": data.get(
+            "system",
+            {},
+        ),
         "status": status,
         "findings": findings,
     }
 
 
-def load_evidence(input_dir: Path) -> list[dict[str, Any]]:
+def load_evidence(
+    input_dir: Path,
+) -> list[dict[str, Any]]:
     evidence = []
 
-    for path in sorted(input_dir.glob("*.json")):
-        with path.open("r", encoding="utf-8") as handle:
+    for path in sorted(
+        input_dir.glob("*.json")
+    ):
+        with path.open(
+            "r",
+            encoding="utf-8",
+        ) as handle:
             data = json.load(handle)
 
         evidence.append(data)
@@ -308,54 +603,131 @@ def load_evidence(input_dir: Path) -> list[dict[str, Any]]:
     return evidence
 
 
-def build_fleet_report(hosts: list[dict[str, Any]]) -> dict[str, Any]:
+def load_baselines(
+    baseline_dir: Path,
+) -> dict[str, dict[str, Any]]:
+    baselines: dict[
+        str,
+        dict[str, Any],
+    ] = {}
+
+    for path in sorted(
+        baseline_dir.glob("*.json")
+    ):
+        with path.open(
+            "r",
+            encoding="utf-8",
+        ) as handle:
+            data = json.load(handle)
+
+        host = data.get("host")
+
+        if host:
+            baselines[
+                str(host)
+            ] = data
+
+    return baselines
+
+
+def build_fleet_report(
+    hosts: list[dict[str, Any]],
+) -> dict[str, Any]:
     host_status_summary = {
         severity: 0
-        for severity in SEVERITY_ORDER
+        for severity
+        in SEVERITY_ORDER
     }
 
     finding_summary = {
         severity: 0
-        for severity in SEVERITY_ORDER
+        for severity
+        in SEVERITY_ORDER
     }
 
     for host in hosts:
-        status = host.get("status", "OK")
+        status = host.get(
+            "status",
+            "OK",
+        )
 
-        if status in host_status_summary:
-            host_status_summary[status] += 1
+        if (
+            status
+            in host_status_summary
+        ):
+            host_status_summary[
+                status
+            ] += 1
 
-        for finding in host.get("findings", []):
-            severity = finding.get("severity")
+        for finding in host.get(
+            "findings",
+            [],
+        ):
+            severity = finding.get(
+                "severity"
+            )
 
-            if severity in finding_summary:
-                finding_summary[severity] += 1
+            if (
+                severity
+                in finding_summary
+            ):
+                finding_summary[
+                    severity
+                ] += 1
 
     return {
         "schema_version": "1.0",
         "host_count": len(hosts),
-        "host_status_summary": host_status_summary,
-        "finding_summary": finding_summary,
+        "host_status_summary": (
+            host_status_summary
+        ),
+        "finding_summary": (
+            finding_summary
+        ),
         "hosts": hosts,
     }
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Analyze Linux security audit evidence."
+        description=(
+            "Analyze Linux security "
+            "audit evidence."
+        )
     )
 
     parser.add_argument(
         "--input-dir",
         type=Path,
-        default=Path("raw_data"),
-        help="Directory containing host evidence JSON files.",
+        default=Path(
+            "raw_data"
+        ),
+        help=(
+            "Directory containing host "
+            "evidence JSON files."
+        ),
+    )
+
+    parser.add_argument(
+        "--baseline-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Optional directory containing "
+            "approved host baseline JSON files."
+        ),
     )
 
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("reports/fleet-analysis.json"),
-        help="Path of the generated fleet analysis JSON file.",
+        default=Path(
+            "reports/fleet-analysis.json"
+        ),
+        help=(
+            "Path of the generated fleet "
+            "analysis JSON file."
+        ),
     )
 
     return parser.parse_args()
@@ -366,44 +738,93 @@ def main() -> int:
 
     if not args.input_dir.exists():
         raise SystemExit(
-            f"Input directory does not exist: {args.input_dir}"
+            (
+                "Input directory does not exist: "
+                f"{args.input_dir}"
+            )
         )
 
-    evidence = load_evidence(args.input_dir)
+    evidence = load_evidence(
+        args.input_dir
+    )
 
     if not evidence:
         raise SystemExit(
-            f"No JSON evidence files found in: {args.input_dir}"
+            (
+                "No JSON evidence files found in: "
+                f"{args.input_dir}"
+            )
+        )
+
+    baselines: dict[
+        str,
+        dict[str, Any],
+    ] = {}
+
+    if args.baseline_dir is not None:
+        if not args.baseline_dir.exists():
+            raise SystemExit(
+                (
+                    "Baseline directory "
+                    "does not exist: "
+                    f"{args.baseline_dir}"
+                )
+            )
+
+        baselines = load_baselines(
+            args.baseline_dir
         )
 
     analyzed_hosts = [
-        analyze_host(host_data)
-        for host_data in evidence
+        analyze_host(
+            host_data,
+            baselines.get(
+                str(
+                    host_data.get(
+                        "host",
+                        "",
+                    )
+                )
+            ),
+        )
+        for host_data
+        in evidence
     ]
 
-    report = build_fleet_report(analyzed_hosts)
+    report = build_fleet_report(
+        analyzed_hosts
+    )
 
     args.output.parent.mkdir(
         parents=True,
         exist_ok=True,
     )
 
-    with args.output.open("w", encoding="utf-8") as handle:
+    with args.output.open(
+        "w",
+        encoding="utf-8",
+    ) as handle:
         json.dump(
             report,
             handle,
             indent=2,
             ensure_ascii=False,
         )
+
         handle.write("\n")
 
     print(
-        f"Analyzed {len(analyzed_hosts)} host(s). "
-        f"Report written to {args.output}"
+        (
+            f"Analyzed {len(analyzed_hosts)} "
+            "host(s). "
+            f"Report written to {args.output}"
+        )
     )
 
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(
+        main()
+    )
