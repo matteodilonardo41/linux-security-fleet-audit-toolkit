@@ -1,0 +1,4 @@
+# The Python analysis and reporting components use only the standard library.
+# Ansible is required for live evidence collection.
+
+ansible-core>=2.16
