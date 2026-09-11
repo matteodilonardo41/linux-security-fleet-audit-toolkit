@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Linux Security Fleet Audit daily
+
+[Timer]
+OnCalendar=*-*-* 08:00:00
+Persistent=true
+RandomizedDelaySec=15m
+Unit=linux-security-fleet-audit.service
+
+[Install]
+WantedBy=timers.target

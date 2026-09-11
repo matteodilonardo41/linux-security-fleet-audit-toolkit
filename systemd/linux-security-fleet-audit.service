@@ -1,0 +1,26 @@
+[Unit]
+Description=Linux Security Fleet Audit Toolkit
+Documentation=https://github.com/matteodilonardo41/linux-security-fleet-audit-toolkit
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/linux-security-fleet-audit-toolkit
+ExecStart=/opt/linux-security-fleet-audit-toolkit/run-audit.sh demo
+
+User=root
+Group=root
+
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
