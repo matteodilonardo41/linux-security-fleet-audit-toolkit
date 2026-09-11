@@ -1,0 +1,145 @@
+---
+- name: Collect Linux security audit evidence
+  hosts: linux_servers
+  gather_facts: true
+  become: true
+
+  vars:
+    audit_output_dir: "{{ playbook_dir }}/../raw_data"
+
+  pre_tasks:
+    - name: Ensure local evidence directory exists
+      ansible.builtin.file:
+        path: "{{ audit_output_dir }}"
+        state: directory
+        mode: "0700"
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+  tasks:
+    - name: Collect UID 0 accounts
+      ansible.builtin.shell: |
+        awk -F: '$3 == 0 {print $1 ":" $3 ":" $6 ":" $7}' /etc/passwd
+      args:
+        executable: /bin/bash
+      register: audit_uid0_accounts
+      changed_when: false
+      failed_when: false
+
+    - name: Collect effective SSH configuration
+      ansible.builtin.command:
+        argv:
+          - sshd
+          - -T
+      register: audit_sshd_config
+      changed_when: false
+      failed_when: false
+
+    - name: Collect authorized_keys metadata
+      ansible.builtin.shell: |
+        find /root /home -type f -path '*/.ssh/authorized_keys' \
+        -exec stat --printf='%n|%U|%G|%a|%s|%Y\n' {} \; 2>/dev/null
+      args:
+        executable: /bin/bash
+      register: audit_authorized_keys
+      changed_when: false
+      failed_when: false
+
+    - name: Collect cron persistence files
+      ansible.builtin.shell: |
+        find /etc/cron.d /etc/cron.daily /etc/cron.hourly \
+        /etc/cron.monthly /etc/cron.weekly \
+        -maxdepth 2 -type f \
+        -printf '%p|%u|%g|%m|%s|%T@\n' 2>/dev/null | sort
+      args:
+        executable: /bin/bash
+      register: audit_cron_files
+      changed_when: false
+      failed_when: false
+
+    - name: Collect systemd timers
+      ansible.builtin.command:
+        argv:
+          - systemctl
+          - list-timers
+          - --all
+          - --no-pager
+          - --no-legend
+      register: audit_systemd_timers
+      changed_when: false
+      failed_when: false
+
+    - name: Collect listening network sockets
+      ansible.builtin.command:
+        argv:
+          - ss
+          - -lntup
+      register: audit_listening_sockets
+      changed_when: false
+      failed_when: false
+
+    - name: Collect WordPress installation indicators
+      ansible.builtin.shell: |
+        find /var/www -type f -name wp-config.php \
+        -printf '%h\n' 2>/dev/null | sort -u
+      args:
+        executable: /bin/bash
+      register: audit_wordpress_roots
+      changed_when: false
+      failed_when: false
+      when: audit_role | default('generic') == 'web'
+
+    - name: Collect Postfix effective configuration
+      ansible.builtin.command:
+        argv:
+          - postconf
+          - -n
+      register: audit_postfix_config
+      changed_when: false
+      failed_when: false
+      when: audit_role | default('generic') == 'mail'
+
+    - name: Collect ClamAV socket metadata
+      ansible.builtin.shell: |
+        for socket in /run/clamav/clamd.ctl /var/run/clamav/clamd.ctl; do
+          if [ -S "$socket" ]; then
+            stat --printf='%n|%U|%G|%a\n' "$socket"
+          fi
+        done
+      args:
+        executable: /bin/bash
+      register: audit_clamav_socket
+      changed_when: false
+      failed_when: false
+      when: audit_role | default('generic') == 'mail'
+
+    - name: Build structured host evidence
+      ansible.builtin.set_fact:
+        audit_host_evidence:
+          schema_version: "1.0"
+          host: "{{ inventory_hostname }}"
+          role: "{{ audit_role | default('generic') }}"
+          collected_at: "{{ ansible_date_time.iso8601 }}"
+          system:
+            hostname: "{{ ansible_hostname }}"
+            distribution: "{{ ansible_distribution }}"
+            distribution_version: "{{ ansible_distribution_version }}"
+            kernel: "{{ ansible_kernel }}"
+          uid0_accounts: "{{ audit_uid0_accounts.stdout_lines | default([]) }}"
+          sshd_config: "{{ audit_sshd_config.stdout_lines | default([]) }}"
+          authorized_keys: "{{ audit_authorized_keys.stdout_lines | default([]) }}"
+          cron_files: "{{ audit_cron_files.stdout_lines | default([]) }}"
+          systemd_timers: "{{ audit_systemd_timers.stdout_lines | default([]) }}"
+          listening_sockets: "{{ audit_listening_sockets.stdout_lines | default([]) }}"
+          wordpress_roots: "{{ audit_wordpress_roots.stdout_lines | default([]) }}"
+          postfix_config: "{{ audit_postfix_config.stdout_lines | default([]) }}"
+          clamav_socket: "{{ audit_clamav_socket.stdout_lines | default([]) }}"
+
+    - name: Store host evidence on the controller
+      ansible.builtin.copy:
+        dest: "{{ audit_output_dir }}/{{ inventory_hostname }}.json"
+        content: "{{ audit_host_evidence | to_nice_json }}\n"
+        mode: "0600"
+      delegate_to: localhost
+      become: false
