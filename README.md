@@ -1,32 +1,59 @@
+<p align="center">
+  <img src="docs/assets/banner.png" alt="Linux Security Fleet Audit Toolkit banner" width="100%">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/Ansible_Core-2.16%2B-EE0000?logo=ansible&logoColor=white" alt="Ansible Core 2.16+">
+  <img src="https://img.shields.io/badge/Linux-Security_Audit-FCC624?logo=linux&logoColor=black" alt="Linux Security Audit">
+  <img src="https://img.shields.io/badge/Mode-Non--destructive-2ea44f" alt="Non-destructive">
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License">
+</p>
+
 # Linux Security Fleet Audit Toolkit
 
 Automated, non-destructive security auditing for Linux server fleets using **Ansible**, **Python** and **Bash**.
 
-The toolkit collects security-relevant evidence from Linux systems, evaluates it through security rules and approved baselines, classifies findings by severity and generates structured reports for operational review.
+The toolkit collects security-relevant evidence from Linux systems, evaluates it through implemented security rules and approved baselines, classifies findings by severity and generates structured reports for operational review.
 
 > **Public Edition**
 >
 > This repository contains a sanitized demonstration version of a toolkit designed around real-world system administration and defensive security auditing requirements.
 >
-> All hosts, IP addresses, credentials, findings and demonstration data included in this repository are fictitious.
+> All hosts, IP addresses, evidence, baselines and demonstration findings included in this repository are fictitious.
 
 ---
 
 ## Overview
 
-Linux Security Fleet Audit Toolkit turns repetitive security verification tasks into a repeatable and auditable workflow.
+Linux Security Fleet Audit Toolkit turns repetitive Linux security verification activities into a repeatable, structured and auditable workflow.
 
 The project separates:
 
 - evidence collection;
 - security analysis;
 - baseline comparison;
-- role-aware checks;
-- reporting.
+- role-aware evaluation;
+- reporting;
+- orchestration and scheduling.
 
-The audit process is designed to be **non-destructive**.
+The toolkit follows a **non-destructive audit model**.
 
-The toolkit detects and documents conditions that require review, but it does not automatically modify audited systems or remediate detected findings.
+It detects, classifies and documents security-relevant conditions without automatically modifying the audited systems.
+
+Remediation remains an explicit administrative decision.
+
+---
+
+## Report Preview
+
+The Public Edition includes a fully sanitized demonstration workflow using fictitious host evidence and approved demo baselines.
+
+<p align="center">
+  <img src="docs/assets/report-preview.png" alt="Linux Security Fleet Audit report preview" width="100%">
+</p>
+
+The report above is generated exclusively from fictitious demonstration data contained in this repository.
 
 ---
 
@@ -58,31 +85,84 @@ Severity-Classified Findings
 Operational Security Review
 ```
 
-This separation keeps collection, analysis and reporting independent and easier to audit.
+Collection, analysis and reporting are intentionally separated.
+
+This makes the workflow easier to inspect, test, extend and audit.
+
+Detailed architecture documentation is available in:
+
+```text
+docs/architecture.md
+```
 
 ---
 
 ## Key Features
 
 - Multi-host Linux evidence collection with Ansible
-- Non-destructive security assessment
-- Python-based analysis engine
+- Non-destructive remote inspection
+- Python-based security analysis engine
+- Privileged account analysis
 - SSH security checks
-- Privileged account review
 - `authorized_keys` permission analysis
 - Approved baseline comparison
-- Configuration drift detection
-- Role-aware web and mail server checks
+- SSH configuration drift detection
+- Role-aware analysis
+- WordPress installation detection
 - Postfix TLS policy analysis
 - ClamAV socket permission analysis
-- WordPress installation detection
 - Severity-based classification
+- Fleet-level status summaries
 - Structured JSON output
-- Professional HTML security report
-- One-command sanitized demonstration mode
-- systemd service and timer templates
-- Separation between demonstration data and live evidence
-- Designed for repeatable and auditable operations
+- Professional HTML security reports
+- One-command sanitized demo mode
+- Live Ansible collection mode
+- systemd scheduling templates
+- Sanitized demonstration evidence
+- Separation of public and runtime-sensitive data
+
+---
+
+## Implemented Security Controls
+
+The Public Edition currently implements the following analysis controls.
+
+### Generic Linux Controls
+
+| Control ID | Description | Severity |
+|---|---|---|
+| `LINUX-UID0-001` | Unexpected UID 0 account detected | `HIGH` |
+| `SSH-ROOT-001` | Direct SSH root login enabled | `HIGH` |
+| `SSH-AUTH-001` | SSH password authentication enabled | `WARNING` |
+| `SSH-KEY-001` | SSH public-key authentication disabled | `WARNING` |
+| `SSH-KEYPERM-001` | Unsafe `authorized_keys` permissions | `WARNING` |
+
+### Baseline Controls
+
+| Control ID | Description | Severity |
+|---|---|---|
+| `BASELINE-SSH-001` | SSH configuration differs from approved baseline | Dynamic |
+
+The baseline severity is determined by the highest-impact configuration difference.
+
+### Web Role Controls
+
+| Control ID | Description | Severity |
+|---|---|---|
+| `WEB-WP-001` | WordPress installation detected | `INFO` |
+
+### Mail Role Controls
+
+| Control ID | Description | Severity |
+|---|---|---|
+| `MAIL-TLS-001` | Postfix TLS protocol policy requires review | `WARNING` |
+| `MAIL-CLAMAV-001` | ClamAV socket permissions require review | `WARNING` |
+
+Detailed control documentation is available in:
+
+```text
+docs/controls.md
+```
 
 ---
 
@@ -90,65 +170,98 @@ This separation keeps collection, analysis and reporting independent and easier 
 
 The analyzer can compare collected configuration against an approved per-host baseline.
 
-For example:
+The current Public Edition demonstrates SSH baseline comparison for:
 
 ```text
-Expected:
+permitrootlogin
+passwordauthentication
+pubkeyauthentication
+```
+
+Example:
+
+```text
+Approved baseline:
 permitrootlogin no
 
-Current:
+Observed configuration:
 permitrootlogin yes
 
 Result:
 HIGH - SSH configuration differs from approved baseline
 ```
 
-The Public Edition includes a fictitious baseline for `demo-web-01`.
+A baseline finding contains both the expected and observed values.
 
-Baseline differences are reported as findings and do not trigger automatic remediation.
+Baseline drift detection does not automatically restore configuration.
 
 ---
 
 ## Role-Aware Analysis
 
-Checks are applied according to the declared server role.
+Hosts can be assigned a functional role.
 
-### Generic Linux
+The demo inventory includes:
 
-Current checks include:
+```text
+generic
+web
+mail
+monitoring
+```
 
-- unexpected UID 0 accounts;
-- SSH root login;
-- SSH password authentication;
-- SSH public-key authentication;
-- unsafe `authorized_keys` permissions.
+Generic Linux controls can be evaluated across the fleet.
 
-### Web role
+Role-specific controls are applied only when relevant.
 
-Current Public Edition checks include:
+For example:
 
-- WordPress installation detection.
+```text
+web  -> WordPress installation detection
+mail -> Postfix TLS and ClamAV checks
+```
 
-The architecture is designed so additional web security controls can be added without modifying the evidence model for unrelated hosts.
+The `monitoring` role is demonstrated in the inventory structure but does not currently have dedicated analysis controls.
 
-### Mail role
+---
 
-Current checks include:
+## Evidence Collection
 
-- Postfix TLS protocol policy review;
-- ClamAV socket permission analysis.
+Evidence collection is performed through:
 
-Role-aware execution helps reduce irrelevant findings and keeps reports focused on the function of each system.
+```text
+playbooks/audit.yml
+```
+
+The current Ansible collector gathers information including:
+
+```text
+UID 0 accounts
+effective SSH configuration
+authorized_keys metadata
+cron persistence files
+systemd timers
+listening network sockets
+WordPress installation indicators
+Postfix effective configuration
+ClamAV socket metadata
+```
+
+Not every collected data point currently produces a dedicated finding.
+
+This is intentional: the collection layer can retain evidence for future analysis rules without requiring changes to the evidence model.
 
 ---
 
 ## Severity Model
 
+Findings are classified using five severity levels:
+
 | Severity | Meaning |
 |---|---|
 | `CRITICAL` | Immediate security risk requiring urgent investigation |
 | `HIGH` | Significant weakness or configuration drift requiring prompt review |
-| `WARNING` | Security or configuration condition that should be assessed |
+| `WARNING` | Security or configuration condition requiring assessment |
 | `INFO` | Informational or contextual finding |
 | `OK` | No relevant finding detected by the enabled checks |
 
@@ -157,8 +270,6 @@ The overall status of each host is determined by its highest active finding.
 ---
 
 ## Quick Start
-
-The repository includes fully fictitious evidence and baseline data, allowing the complete analysis and reporting pipeline to be tested without connecting to any server.
 
 Clone the repository:
 
@@ -173,45 +284,63 @@ Run the sanitized demonstration:
 ./run-audit.sh demo
 ```
 
-The demo automatically:
+Demo mode does not connect to external systems.
 
-1. loads fictitious host evidence;
-2. loads the approved demo baseline;
-3. runs the Python security analysis;
-4. performs baseline drift detection;
-5. classifies findings;
-6. generates JSON output;
-7. generates the HTML security report.
+It uses:
 
-Generated files are written under:
+```text
+examples/demo-evidence/
+baselines/demo/
+```
+
+The workflow automatically:
+
+```text
+1. Loads fictitious host evidence
+2. Loads the approved demo baseline
+3. Runs the Python security analyzer
+4. Performs baseline drift detection
+5. Classifies findings
+6. Generates fleet-level JSON analysis
+7. Generates the HTML security report
+```
+
+Generated output is written under:
 
 ```text
 reports/
 ```
 
-Generated reports are intentionally excluded from Git tracking.
+Reports are intentionally excluded from Git tracking.
 
 ---
 
 ## Live Collection
 
-Live collection uses the Ansible evidence collector:
+Live Ansible collection can be launched with:
 
 ```bash
 ./run-audit.sh collect <inventory>
 ```
 
-Example:
+Example syntax:
 
 ```bash
 ./run-audit.sh collect inventories/demo.ini
 ```
 
-> The included inventory contains documentation-only TEST-NET addresses and is not intended to represent a real infrastructure.
+> The included demo inventory uses documentation-only TEST-NET addresses and does not represent a real infrastructure.
 
-Before using collection mode in a real environment, create your own private inventory and review the playbook and privilege requirements.
+For real deployments, create a private inventory and review:
 
-Production inventories, collected evidence and generated reports should never be committed to the public repository.
+- SSH connectivity;
+- Ansible privileges;
+- sudo/become requirements;
+- target hosts;
+- collection commands;
+- environment-specific security requirements.
+
+Production inventories should never be committed to this public repository.
 
 ---
 
@@ -221,17 +350,17 @@ Production inventories, collected evidence and generated reports should never be
 
 Python **3.10 or newer** is required.
 
-The Public Edition has been tested with:
+Development testing was performed with:
 
 ```text
 Python 3.12.3
 ```
 
-The analysis and HTML reporting components use only the Python Standard Library.
+The Python analyzer and HTML report generator use only the Python Standard Library.
 
 ### Ansible
 
-Ansible is required only for live evidence collection.
+Ansible is required for live evidence collection.
 
 Install the project dependency with:
 
@@ -255,7 +384,7 @@ ansible-core 2.21.2
 
 ## Demo Environment
 
-The repository uses fictitious systems such as:
+The repository uses fictitious hosts such as:
 
 ```text
 demo-web-01
@@ -273,7 +402,9 @@ The demonstration inventory uses RFC 5737 TEST-NET addresses:
 192.0.2.40
 ```
 
-No real infrastructure data is required to run demo mode.
+These addresses are intended for documentation and examples.
+
+No real infrastructure data is required to execute demo mode.
 
 ---
 
@@ -287,6 +418,9 @@ linux-security-fleet-audit-toolkit/
 ├── baselines/
 │   └── demo/
 ├── docs/
+│   ├── assets/
+│   │   ├── banner.png
+│   │   └── report-preview.png
 │   ├── architecture.md
 │   └── controls.md
 ├── examples/
@@ -300,6 +434,7 @@ linux-security-fleet-audit-toolkit/
 │   ├── linux-security-fleet-audit.service
 │   └── linux-security-fleet-audit.timer
 ├── .gitignore
+├── LICENSE
 ├── README.md
 ├── requirements.txt
 └── run-audit.sh
@@ -309,22 +444,27 @@ linux-security-fleet-audit-toolkit/
 
 ## Evidence and Privacy Model
 
-Collected evidence can contain infrastructure-sensitive information.
+Security audit evidence can contain sensitive infrastructure information.
 
-For this reason, the repository is configured to exclude:
+The repository is configured to exclude runtime data such as:
 
-- collected raw evidence;
-- generated reports;
-- production inventories;
-- production baselines;
-- secrets and environment files;
-- private keys and certificates.
+```text
+raw evidence
+generated reports
+production inventories
+production baselines
+environment files
+credentials
+private keys
+certificates
+temporary files
+```
 
-Only sanitized demonstration data should be committed to this repository.
+Only sanitized demonstration material should be committed to the Public Edition.
 
 ---
 
-## Scheduling
+## systemd Scheduling
 
 Example systemd templates are included under:
 
@@ -332,52 +472,121 @@ Example systemd templates are included under:
 systemd/
 ```
 
-The example timer runs once per day and uses:
+Files:
+
+```text
+linux-security-fleet-audit.service
+linux-security-fleet-audit.timer
+```
+
+The templates use the generic installation path:
+
+```text
+/opt/linux-security-fleet-audit-toolkit
+```
+
+The timer demonstrates daily execution with:
 
 ```ini
 Persistent=true
 RandomizedDelaySec=15m
 ```
 
-The templates intentionally use the generic installation path:
+The included service currently launches demo mode and is intended as a safe public template.
 
-```text
-/opt/linux-security-fleet-audit-toolkit
-```
-
-They should be reviewed and adapted before installation.
+For a real deployment, review and adapt the execution mode, installation path, inventory and permissions before enabling the service.
 
 ---
 
-## Technology Stack
+## Generated Findings
 
-- Linux
-- Ansible
-- Python
-- Bash
-- systemd
-- JSON
-- HTML
+Each analyzer finding uses a consistent structure:
+
+```text
+severity
+control_id
+title
+evidence
+recommendation
+```
+
+Example:
+
+```json
+{
+  "severity": "HIGH",
+  "control_id": "BASELINE-SSH-001",
+  "title": "SSH configuration differs from approved baseline",
+  "evidence": [
+    "setting=permitrootlogin",
+    "expected=no",
+    "current=yes"
+  ]
+}
+```
+
+This structure is reused by both JSON output and the HTML reporting layer.
+
+---
+
+## Non-Destructive Design
+
+The toolkit is designed to detect and document security-relevant conditions.
+
+It does not automatically:
+
+```text
+modify SSH configuration
+create or delete users
+change authorized_keys permissions
+modify Postfix configuration
+modify ClamAV configuration
+remove files
+apply baseline remediation
+```
+
+The administrator remains responsible for validating findings and deciding whether remediation is appropriate.
 
 ---
 
 ## Security Philosophy
 
-The toolkit follows a simple principle:
+The project follows a simple operational model:
 
-> **Detect, classify, document — then let the administrator decide how to remediate.**
+```text
+Detect -> Classify -> Document -> Review
+```
 
-Security auditing and remediation are intentionally separated.
+Security assessment and remediation are intentionally separated.
 
 This reduces unintended changes and preserves administrative control over production systems.
 
 ---
 
+## License
+
+This project is released under the **MIT License**.
+
+See:
+
+```text
+LICENSE
+```
+
+for the complete license text.
+
+---
+
 ## Disclaimer
 
-This project is intended for system administration, defensive security auditing and educational purposes.
+This project is intended for:
 
-Review the source code, configuration, baselines and collection requirements before using it against production systems.
+- system administration;
+- defensive security auditing;
+- automation;
+- educational and demonstration purposes.
+
+Review the source code, inventories, baselines and privilege requirements before using the toolkit in a production environment.
 
 ---
 
@@ -386,3 +595,9 @@ Review the source code, configuration, baselines and collection requirements bef
 **Matteo Di Lonardo**
 
 System Administrator focused on Linux infrastructure, automation, virtualization, monitoring and defensive security.
+
+GitHub:
+
+```text
+https://github.com/matteodilonardo41
+```
