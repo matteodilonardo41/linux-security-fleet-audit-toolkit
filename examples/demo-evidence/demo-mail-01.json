@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "host": "demo-mail-01",
+  "role": "mail",
+  "collected_at": "2026-01-01T08:00:00Z",
+  "system": {
+    "hostname": "demo-mail-01",
+    "distribution": "Debian",
+    "distribution_version": "12",
+    "kernel": "6.1.0-demo"
+  },
+  "uid0_accounts": [
+    "root:0:/root:/bin/bash"
+  ],
+  "sshd_config": [
+    "permitrootlogin no",
+    "passwordauthentication no",
+    "pubkeyauthentication yes"
+  ],
+  "authorized_keys": [
+    "/home/audit/.ssh/authorized_keys|audit|audit|600|380|1760000000"
+  ],
+  "cron_files": [],
+  "systemd_timers": [],
+  "listening_sockets": [],
+  "wordpress_roots": [],
+  "postfix_config": [
+    "smtpd_tls_protocols = !SSLv2, !SSLv3",
+    "smtpd_tls_mandatory_protocols = !SSLv2, !SSLv3"
+  ],
+  "clamav_socket": [
+    "/run/clamav/clamd.ctl|clamav|clamav|666"
+  ]
+}

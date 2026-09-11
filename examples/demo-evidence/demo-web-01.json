@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "host": "demo-web-01",
+  "role": "web",
+  "collected_at": "2026-01-01T08:00:00Z",
+  "system": {
+    "hostname": "demo-web-01",
+    "distribution": "Ubuntu",
+    "distribution_version": "24.04",
+    "kernel": "6.8.0-demo"
+  },
+  "uid0_accounts": [
+    "root:0:/root:/bin/bash"
+  ],
+  "sshd_config": [
+    "permitrootlogin yes",
+    "passwordauthentication yes",
+    "pubkeyauthentication yes"
+  ],
+  "authorized_keys": [
+    "/home/demo/.ssh/authorized_keys|demo|demo|600|400|1760000000"
+  ],
+  "cron_files": [],
+  "systemd_timers": [],
+  "listening_sockets": [],
+  "wordpress_roots": [
+    "/var/www/demo-site"
+  ],
+  "postfix_config": [],
+  "clamav_socket": []
+}
